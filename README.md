@@ -7,7 +7,12 @@ The platform begins by building a detailed learner profile through surveys and p
 By combining artificial intelligence, machine learning, educational analytics, and recommendation systems, EduTech AI helps students learn more efficiently while providing educators and administrators with actionable insights into student progress.
 
 The system aims to support SDG 4: Quality Education by making personalized and intelligent learning accessible to every student regardless of their background or learning style.
+
 System Arhciture
+
+
+
+
 ┌───────────────────────────┐
 │        Frontend           │
 │                           │
