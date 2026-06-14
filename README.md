@@ -8,69 +8,6 @@ By combining artificial intelligence, machine learning, educational analytics, a
 
 The system aims to support SDG 4: Quality Education by making personalized and intelligent learning accessible to every student regardless of their background or learning style.
 
-System Arhciture
 
 
 
-
-┌───────────────────────────┐
-│        Frontend           │
-│                           │
-│  Student Dashboard        │
-│  Admin Dashboard          │
-│  AI Tutor Interface       │
-│  Analytics Dashboard      │
-└─────────────┬─────────────┘
-              │
-              ▼
-┌───────────────────────────┐
-│       API Gateway         │
-└─────────────┬─────────────┘
-              │
- ┌────────────┼────────────┐
- │            │            │
- ▼            ▼            ▼
-
-┌─────────┐ ┌─────────┐ ┌─────────┐
-│ Profile │ │ Roadmap │ │ Resource│
-│ Service │ │ Service │ │ Service │
-└────┬────┘ └────┬────┘ └────┬────┘
-     │           │           │
-     ▼           ▼           ▼
-
-┌───────────────────────────┐
-│      AI Orchestrator      │
-└─────────────┬─────────────┘
-              │
- ┌────────────┼────────────┐
- │            │            │
- ▼            ▼            ▼
-
-┌─────────┐ ┌─────────┐ ┌─────────┐
-│ Tutor   │ │ Quiz    │ │ Career  │
-│ Agent   │ │ Agent   │ │ Agent   │
-└────┬────┘ └────┬────┘ └────┬────┘
-     │           │           │
-     ▼           ▼           ▼
-
-┌─────────┐ ┌─────────┐ ┌─────────┐
-│ Gap     │ │ Predict │ │ Recomm. │
-│ Agent   │ │ Agent   │ │ Agent   │
-└────┬────┘ └────┬────┘ └────┬────┘
-     │           │           │
-     └───────────┼───────────┘
-                 │
-                 ▼
-
-┌───────────────────────────┐
-│      PostgreSQL DB        │
-│                           │
-│ Users                     │
-│ Profiles                  │
-│ Roadmaps                  │
-│ Resources                 │
-│ Quiz Results              │
-│ Predictions               │
-│ Career Suggestions        │
-│ Chat History              │
-└───────────────────────────┘
