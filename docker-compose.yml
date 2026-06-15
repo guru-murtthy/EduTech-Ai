@@ -1,0 +1,62 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: edutech-db
+    environment:
+      POSTGRES_DB: edutech
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgrespassword
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - edutech-network
+
+  ai-service:
+    build: ./ai-service
+    container_name: edutech-ai
+    ports:
+      - "8000:8000"
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+    networks:
+      - edutech-network
+
+  backend:
+    build: ./backend
+    container_name: edutech-backend
+    ports:
+      - "8080:8080"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/edutech
+      - SPRING_DATASOURCE_USERNAME=postgres
+      - SPRING_DATASOURCE_PASSWORD=postgrespassword
+      - APP_AI_SERVICE_URL=http://ai-service:8000
+    depends_on:
+      - postgres
+      - ai-service
+    networks:
+      - edutech-network
+
+  frontend:
+    build: ./frontend
+    container_name: edutech-frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:8080
+    depends_on:
+      - backend
+    networks:
+      - edutech-network
+
+volumes:
+  postgres_data:
+
+networks:
+  edutech-network:
+    driver: bridge

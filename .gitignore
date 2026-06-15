@@ -1,0 +1,29 @@
+# Maven
+**/target/
+**/.maven/
+**/data/
+*.db
+
+# Node
+**/node_modules/
+**/.next/
+**/out/
+.npm
+
+# Python
+**/__pycache__/
+**/*.pyc
+**/*.pyo
+**/*.pyd
+**/.venv/
+**/venv/
+**/.pytest_cache/
+
+# Environments & OS
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.DS_Store
+Thumbs.db

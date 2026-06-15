@@ -1,0 +1,53 @@
+server:
+  port: 8080
+
+app:
+  jwt:
+    secret: 9a4f2c8d3b7a1e5f8c6d4b2a0f7e5d3c1b9a7f5e3d1c9b7a5f3e1d9c7b5a3f1e
+    expiration-ms: 86400000 # 24 hours
+  ai:
+    service-url: http://localhost:8000
+
+spring:
+  profiles:
+    active: local
+  main:
+    allow-bean-definition-overriding: true
+
+---
+spring:
+  config:
+    activate:
+      on-profile: local
+  datasource:
+    url: jdbc:h2:mem:edutechdb;DB_CLOSE_DELAY=-1
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: password
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+      settings:
+        web-allow-others: true
+  jpa:
+    database-platform: org.hibernate.dialect.H2Dialect
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+
+---
+spring:
+  config:
+    activate:
+      on-profile: docker
+  datasource:
+    url: jdbc:postgresql://postgres:5432/edutech
+    driver-class-name: org.postgresql.Driver
+    username: postgres
+    password: postgrespassword
+  jpa:
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    hibernate:
+      ddl-auto: update
+    show-sql: false
