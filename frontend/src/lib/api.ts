@@ -1,9 +1,13 @@
-let API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
+let API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://edutech-backend-qvs6.onrender.com';
 
 if (typeof window !== 'undefined') {
-  // On the client side, use the Next.js rewrite proxy (/api) to avoid CORS and firewall restrictions,
-  // unless process.env.NEXT_PUBLIC_API_URL is explicitly configured.
-  API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || '/api';
+  const hostname = window.location.hostname;
+  if (hostname.endsWith('.vercel.app')) {
+    API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://edutech-backend-qvs6.onrender.com';
+  } else {
+    // Local environment (localhost or local IP) uses the Next.js local proxy rewrite
+    API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || '/api';
+  }
 }
 
 export async function apiRequest(endpoint: string, options: RequestInit = {}) {
