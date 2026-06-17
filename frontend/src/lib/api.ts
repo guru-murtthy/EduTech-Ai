@@ -1,21 +1,32 @@
-let API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://edutech-backend-qvs6.onrender.com';
+// Production backend URL (Render)
+const PRODUCTION_API = 'https://edutech-backend-qvs6.onrender.com';
 
-if (typeof window !== 'undefined') {
-  const hostname = window.location.hostname;
-  if (hostname.endsWith('.vercel.app')) {
-    API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://edutech-backend-qvs6.onrender.com';
-  } else {
-    // Local environment (localhost or local IP) uses the Next.js local proxy rewrite
-    API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || '/api';
+// Determine the correct base URL
+function getApiBaseUrl(): string {
+  // During server-side rendering (Next.js SSR), default to production
+  if (typeof window === 'undefined') {
+    return process.env.NEXT_PUBLIC_API_URL || PRODUCTION_API;
   }
+
+  const hostname = window.location.hostname;
+
+  // Localhost / local dev — use Next.js proxy rewrite to avoid CORS
+  if (hostname === 'localhost' || hostname === '127.0.0.1') {
+    return process.env.NEXT_PUBLIC_API_URL || '/api';
+  }
+
+  // Any deployed environment (Vercel, custom domain, etc.) → use Render backend directly
+  return process.env.NEXT_PUBLIC_API_URL || PRODUCTION_API;
 }
+
+const API_BASE_URL = getApiBaseUrl();
 
 export async function apiRequest(endpoint: string, options: RequestInit = {}) {
   const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
-  
+
   const headers = new Headers(options.headers || {});
   headers.set('Content-Type', 'application/json');
-  
+
   if (token) {
     headers.set('Authorization', `Bearer ${token}`);
   }
