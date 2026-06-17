@@ -12,6 +12,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 import java.util.*;
@@ -85,17 +86,19 @@ public class ChatController {
                 .build();
         chatHistoryRepository.save(userMessage);
 
-        // 2. Load recent history
-        List<ChatHistory> historyList = chatHistoryRepository.findByStudentProfileIdOrderByCreatedAtAsc(profile.getId());
-        List<Map<String, String>> recentHistory = historyList.stream()
-                .limit(20) // Limit context size
-                .map(h -> Map.of("role", h.getRole(), "content", h.getMessage()))
+        // 2. Load recent history (last 20 messages)
+        List<ChatHistory> historyList = chatHistoryRepository.findRecentMessages(profile.getId(), PageRequest.of(0, 20));
+        List<ChatHistory> reversedHistory = new ArrayList<>(historyList);
+        Collections.reverse(reversedHistory); // Sort chronologically
+
+        List<Map<String, String>> recentHistory = reversedHistory.stream()
+                .map(h -> Map.of("role", h.getRole(), "content", cleanMessageContent(h.getMessage())))
                 .collect(Collectors.toList());
 
         // 3. Call AI Service
         try {
             Map<String, Object> payload = new HashMap<>();
-            payload.put("prompt", prompt);
+            payload.put("prompt", cleanMessageContent(prompt));
             payload.put("history", recentHistory);
 
             String aiResponseJson = aiServiceClient.chatTutor(payload);
@@ -115,6 +118,22 @@ public class ChatController {
         } catch (Exception e) {
             return ResponseEntity.status(500).body(Map.of("message", "Tutor is temporarily offline: " + e.getMessage()));
         }
+    }
+
+    private String cleanMessageContent(String content) {
+        if (content != null && content.startsWith("[File: ")) {
+            int closingIndex = content.indexOf("]");
+            if (closingIndex != -1) {
+                String filePart = content.substring(7, closingIndex);
+                String remaining = content.substring(closingIndex + 1).trim();
+                int separatorIndex = filePart.indexOf("|");
+                if (separatorIndex != -1) {
+                    String fileName = filePart.substring(0, separatorIndex);
+                    return "[File: " + fileName + "] " + remaining;
+                }
+            }
+        }
+        return content;
     }
 
     @DeleteMapping("/history")

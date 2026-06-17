@@ -2,6 +2,14 @@
 title Spring Boot Backend Runner
 cd %~dp0
 
+where mvn >nul 2>nul
+if %errorlevel% equ 0 (
+    echo [Info] Using system Maven found in PATH.
+    echo [Info] Running Spring Boot Backend...
+    mvn spring-boot:run
+    goto :eof
+)
+
 if exist ".maven\apache-maven-3.9.6" (
     echo [Info] Local Maven installation found.
     goto run

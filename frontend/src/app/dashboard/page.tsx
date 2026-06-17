@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { student, roadmap, recommendations, career } from '@/lib/api';
 import { 
   User, Award, TrendingUp, Sparkles, BookOpen, Clock, 
-  CheckCircle, ChevronRight, Play, FileText, Link as LinkIcon, Compass, AlertCircle
+  CheckCircle, ChevronRight, ArrowRight, Play, FileText, Link as LinkIcon, Compass, AlertCircle
 } from 'lucide-react';
 
 export default function StudentDashboard() {

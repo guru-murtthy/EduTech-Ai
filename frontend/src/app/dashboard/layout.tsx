@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
-import { GraduationCap, LayoutDashboard, BrainCircuit, Play, MessageSquare, LogOut, User, Activity, Menu, X } from 'lucide-react';
+import { GraduationCap, LayoutDashboard, BrainCircuit, Play, MessageSquare, LogOut, User, Activity, Menu, X, Headphones } from 'lucide-react';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -34,6 +34,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     { name: 'AI Study Tutor', path: '/dashboard/tutor', icon: MessageSquare },
     { name: 'Adaptive Quizzes', path: '/dashboard/quiz', icon: BrainCircuit },
     { name: 'Algorithmic Lab', path: '/dashboard/lab', icon: Play },
+    { name: 'Live Admin Support', path: '/dashboard/support', icon: Headphones },
   ];
 
   return (

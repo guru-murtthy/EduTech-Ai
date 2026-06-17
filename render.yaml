@@ -1,0 +1,24 @@
+services:
+  # 1. Python FastAPI AI Service
+  - type: web
+    name: edutech-ai-service
+    env: docker
+    dockerfilePath: ai-service/Dockerfile
+    dockerContext: ai-service
+    plan: free
+    envVars:
+      - key: OPENAI_API_KEY
+        sync: false # Set this in Render UI (your Grok API Key)
+
+  # 2. Spring Boot Backend Service
+  - type: web
+    name: edutech-backend
+    env: docker
+    dockerfilePath: backend/Dockerfile
+    dockerContext: backend
+    plan: free
+    envVars:
+      - key: SPRING_PROFILES_ACTIVE
+        value: local # Uses H2 in-memory DB by default (free, no setup). Set to 'docker' if using PostgreSQL.
+      - key: APP_AI_SERVICE_URL
+        value: http://edutech-ai-service:8000 # Inter-service communication inside Render

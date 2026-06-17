@@ -95,6 +95,7 @@ public class AnalyticsController {
             Map<String, Object> map = new HashMap<>();
             map.put("id", s.getId());
             map.put("name", s.getName());
+            map.put("email", s.getUser() != null ? s.getUser().getEmail() : "");
             map.put("age", s.getAge());
             map.put("educationLevel", s.getEducationLevel());
             map.put("careerInterest", s.getCareerInterest());

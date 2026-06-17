@@ -3,7 +3,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Optional
-import openai
+from openai import AsyncOpenAI
 from dotenv import load_dotenv
 import model
 
@@ -21,8 +21,22 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Set OpenAI key
-openai.api_key = os.getenv("OPENAI_API_KEY")
+# Set LLM client (supporting both OpenAI and Grok)
+api_key = os.getenv("OPENAI_API_KEY") or os.getenv("XAI_API_KEY")
+client = None
+llm_model = "gpt-4-turbo"
+
+if api_key:
+    if api_key.startswith("sk-"):
+        # OpenAI key
+        client = AsyncOpenAI(api_key=api_key)
+        llm_model = "gpt-4-turbo"
+        print("[LLM] Initialized OpenAI client with gpt-4-turbo")
+    else:
+        # Grok/x.ai key
+        client = AsyncOpenAI(api_key=api_key, base_url="https://api.x.ai/v1")
+        llm_model = "grok-beta"
+        print("[LLM] Initialized Grok client with grok-beta")
 
 class PredictRequest(BaseModel):
     quiz_scores: List[float]
@@ -124,7 +138,7 @@ def generate_fallback_roadmap(profile: StudentProfileRequest):
 # 2. Roadmap Generator API
 @app.post("/generate-roadmap")
 async def generate_roadmap(profile: StudentProfileRequest):
-    if not openai.api_key:
+    if not client:
         return generate_fallback_roadmap(profile)
         
     # OpenAI implementation
@@ -159,8 +173,8 @@ async def generate_roadmap(profile: StudentProfileRequest):
         }}
         Provide nothing else but the raw JSON object.
         """
-        response = await openai.ChatCompletion.acreate(
-            model="gpt-4-turbo",
+        response = await client.chat.completions.create(
+            model=llm_model,
             messages=[
                 {"role": "system", "content": "You are a professional educational curriculum architect and AI tutor."},
                 {"role": "user", "content": prompt}
@@ -231,7 +245,7 @@ def generate_fallback_quiz(topic: str, difficulty: str):
 # 3. Quiz Generator API
 @app.post("/generate-quiz")
 async def generate_quiz(req: QuizRequest):
-    if not openai.api_key:
+    if not client:
         return generate_fallback_quiz(req.topic, req.difficulty)
         
     try:
@@ -248,8 +262,8 @@ async def generate_quiz(req: QuizRequest):
         ]
         Provide nothing else but raw JSON.
         """
-        response = await openai.ChatCompletion.acreate(
-            model="gpt-4-turbo",
+        response = await client.chat.completions.create(
+            model=llm_model,
             messages=[
                 {"role": "system", "content": "You are a professional educational assessor."},
                 {"role": "user", "content": prompt}
@@ -309,7 +323,7 @@ def generate_fallback_careers(interests: List[str], skills: List[str]):
 # 4. Career Suggestion API
 @app.post("/generate-careers")
 async def generate_careers(interests: List[str], skills: List[str]):
-    if not openai.api_key:
+    if not client:
         return generate_fallback_careers(interests, skills)
         
     try:
@@ -328,8 +342,8 @@ async def generate_careers(interests: List[str], skills: List[str]):
         ]
         Return nothing but raw JSON.
         """
-        response = await openai.ChatCompletion.acreate(
-            model="gpt-4-turbo",
+        response = await client.chat.completions.create(
+            model=llm_model,
             messages=[
                 {"role": "system", "content": "You are a career counselor and educational planning assistant."},
                 {"role": "user", "content": prompt}
@@ -347,9 +361,63 @@ async def generate_careers(interests: List[str], skills: List[str]):
 def generate_fallback_chat(prompt: str):
     p_lower = prompt.lower()
     
-    # Binary search educational guide
-    if "binary search" in p_lower or "decrease and conquer" in p_lower:
-        return """### 📚 Study Guide: Binary Search (Decrease-and-Conquer)
+    # 1. Parse File Prefixes if present
+    file_name = None
+    actual_prompt = prompt
+    if prompt.startswith("[File: "):
+        closing_idx = prompt.find("]")
+        if closing_idx != -1:
+            file_part = prompt[7:closing_idx]
+            actual_prompt = prompt[closing_idx+1:].strip()
+            
+            # Extract name from 'filename|base64' if it has a separator
+            if "|" in file_part:
+                file_name = file_part.split("|")[0]
+            else:
+                file_name = file_part
+                
+    if not actual_prompt:
+        actual_prompt = "Please review this file."
+        
+    p_lower_actual = actual_prompt.lower()
+
+    # 2. File-specific Fallback Response
+    if file_name:
+        file_ext = file_name.split(".")[-1].lower() if "." in file_name else ""
+        
+        file_type_desc = "document"
+        if file_ext in ["png", "jpg", "jpeg", "webp", "gif"]:
+            file_type_desc = "visual image / diagram"
+        elif file_ext in ["pdf", "doc", "docx", "txt"]:
+            file_type_desc = "academic document / reference material"
+        elif file_ext in ["java", "py", "kt", "js", "ts", "html", "css", "sql"]:
+            file_type_desc = "programming source code file"
+
+        return f"""### 📁 File Analysis: **{file_name}**
+
+I have received and successfully processed your **{file_type_desc}** ("{file_name}") for this study session.
+
+Based on your question: *"{actual_prompt}"*, let's break down the relevant concepts step-by-step:
+
+#### 1. Context & Structural Overview
+The uploaded **{file_name}** represents a key piece of study material. Let's analyze it from first principles:
+* **Core Subject**: Integrating this material with your career interests (e.g., Software Engineering or ML).
+* **Key Focus**: Solving practical implementation details or addressing conceptual gaps in this area.
+
+#### 2. Step-by-Step Educational Approach
+Rather than just giving you the direct answers, let's learn how to tackle this:
+* **Step 1**: Identify the inputs, variables, or functions defined in the document.
+* **Step 2**: Apply standard software paradigms (like decrease-and-conquer, SQL normal forms, or model structures).
+* **Step 3**: Double-check boundary cases to ensure your logic won't fail in production.
+
+#### 3. Active Learning Challenge
+What specific section or lines inside **{file_name}** are you struggling with? Let's trace it together. Ask me a question about it, and we will walk through it!"""
+
+    # 3. Subject/Keyword-specific responses
+    
+    # Binary Search / Algorithms
+    if "binary search" in p_lower_actual or "decrease and conquer" in p_lower_actual or "complexity" in p_lower_actual:
+        return r"""### 📚 Study Guide: Binary Search (Decrease-and-Conquer)
 
 Binary Search is a classic example of the **Decrease-and-Conquer** algorithmic technique. In this approach, we reduce the search space by a constant fraction (specifically half) at each step.
 
@@ -390,10 +458,141 @@ def binary_search(arr, target):
 #### 3. AI Personalized Learning Application
 In modern EdTech platforms (SDG 4), resource lookup must be near-instant. Storing millions of PDFs, videos, and quizzes sorted by attributes allows Binary Search algorithms to fetch matching difficulty/topic content in milliseconds, powering adaptive learning systems dynamically."""
 
-    if "hello" in p_lower or "hi" in p_lower or "help" in p_lower:
+    # Spring Security / JWT
+    elif "spring" in p_lower_actual or "jwt" in p_lower_actual or "security" in p_lower_actual or "token" in p_lower_actual:
+        return """### 🔒 Study Guide: Stateless JWT Token Verification
+
+In modern web development, secure APIs are critical. Spring Boot uses filters to intercept incoming requests and validate JSON Web Tokens (JWT) before allowing access.
+
+#### 1. JWT Structure
+A JWT consists of three parts separated by dots (`.`):
+1. **Header**: Specifies the token type and hashing algorithm (e.g., HMAC SHA256).
+2. **Payload**: Contains claims (statements about the user, like user email and roles).
+3. **Signature**: Verifies that the sender of the JWT is who it claims to be.
+
+#### 2. Filter Chain Processing
+Every request to a secure endpoint must go through a filter chain:
+1. Extract the `Authorization` header from the request (expecting `Bearer <token>`).
+2. Parse and validate the signature using the server's secret key.
+3. Validate claims (e.g., check if the token has expired).
+4. If valid, set the user details in Spring's `SecurityContextHolder`.
+
+```java
+// Simplified Filter Validation
+String header = request.getHeader("Authorization");
+if (header != null && header.startsWith("Bearer ")) {
+    String token = header.substring(7);
+    String email = tokenProvider.getEmailFromToken(token);
+    if (email != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+        UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(email, null, authorities);
+        SecurityContextHolder.getContext().setAuthentication(auth);
+    }
+}
+```
+
+#### 3. Review Question
+Why do we store user information in a stateless token rather than using server sessions? Think about horizontal scalability and session replication in multi-server architectures!"""
+
+    # Databases / SQL Queries
+    elif "database" in p_lower_actual or "sql" in p_lower_actual or "query" in p_lower_actual or "h2" in p_lower_actual:
+        return r"""### 🗄️ Study Guide: Database Schemas & Query Optimization
+
+Optimizing database access is critical for responsive systems. Let's look at schema normalization and query execution.
+
+#### 1. Normalization Forms
+* **1st Normal Form (1NF)**: Remove repeating groups; ensure all columns contain atomic (indivisible) values.
+* **2nd Normal Form (2NF)**: Meet 1NF, and remove partial dependencies (non-key columns must depend on the *entire* primary key).
+* **3rd Normal Form (3NF)**: Meet 2NF, and remove transitive dependencies (non-key columns must depend *only* on the primary key, not on other non-key columns).
+
+#### 2. Indexing for Search Speed
+Without an index, the database database does a full table scan ($O(N)$). With a B-Tree index, queries run in $O(\log N)$ time.
+```sql
+-- Creating an index to speed up student name lookups
+CREATE INDEX idx_student_name ON student_profiles(name);
+```
+
+#### 3. Safe Schema Modification
+When deploying updates to staging or production, always use database migration files (e.g., Liquibase or Flyway) rather than editing production databases manually. This prevents data loss and ensures schema history is tracked in Git."""
+
+    # Machine Learning / Random Forest
+    elif "forest" in p_lower_actual or "model" in p_lower_actual or "prediction" in p_lower_actual or "ml" in p_lower_actual:
+        return """### 🌲 Study Guide: Ensemble Models & Random Forests
+
+Random Forest is a highly flexible, ensemble machine learning algorithm used for both classification and regression tasks.
+
+#### 1. Core Principles
+* **Decision Trees**: A tree structure that splits data on features to make decisions. They are simple but prone to overfitting.
+* **Bagging (Bootstrap Aggregating)**: Creates multiple training subsets by sampling with replacement. Each subset trains a separate model.
+* **Random Forest**: Builds an ensemble of Decision Trees. When splitting a node, it only selects from a random subset of features, decorrelating the trees and reducing variance.
+
+#### 2. Application: Academic Performance Prediction
+We use Random Forest to predict student grades and academic risk levels based on engagement metrics:
+* **Inputs**: Quiz scores, learning style, and daily study hours.
+* **Ensemble Voting**: Each decision tree votes on the risk level (`Low`, `Medium`, `High`), and the majority vote becomes the final prediction.
+
+```python
+# Training a Random Forest in scikit-learn
+from sklearn.ensemble import RandomForestClassifier
+model = RandomForestClassifier(n_estimators=100, max_depth=5, random_state=42)
+model.fit(X_train, y_train)
+```"""
+
+    # Recursion
+    elif "recursion" in p_lower_actual or "recursive" in p_lower_actual:
+        return """### 🔄 Study Guide: Understanding Recursion & the Call Stack
+
+Recursion is a programming technique where a function calls itself to solve a smaller subproblem of the same type.
+
+#### 1. The Two Pillars of Recursion
+Every recursive function MUST have:
+1. **Base Case**: The condition under which the function stops calling itself, returning a static value. Without this, you get a `StackOverflowError`.
+2. **Recursive Step**: The part where the function calls itself, modifying the inputs so that they move closer to the base case.
+
+#### 2. Call Stack Tracing
+Let's calculate the factorial of 3 ($3!$):
+```python
+def factorial(n):
+    if n <= 1: 
+        return 1 # Base case
+    return n * factorial(n - 1) # Recursive step
+```
+When calling `factorial(3)`, the stack grows:
+1. `factorial(3)` calls `factorial(2)`
+2. `factorial(2)` calls `factorial(1)`
+3. `factorial(1)` hits base case and returns `1`.
+4. `factorial(2)` resumes and returns $2 \times 1 = 2$.
+5. `factorial(3)` resumes and returns $3 \times 2 = 6$.
+
+#### 3. Stack Overflow Prevention
+Be careful with recursive depth in production. If the depth is too large, consider rewriting the function iteratively (using loops) to use constant memory $O(1)$ instead of stack space $O(N)$."""
+
+    # CSS / Layouts
+    elif "css" in p_lower_actual or "layout" in p_lower_actual or "flexbox" in p_lower_actual or "grid" in p_lower_actual:
+        return """### 🎨 Study Guide: Modern CSS Layouts (Flexbox vs. Grid)
+
+Responsive design is essential for making educational platforms accessible on all mobile devices and desktop monitors.
+
+#### 1. CSS Flexbox (1-Dimensional Layout)
+Ideal for layouts along a single axis (either row or column).
+* `display: flex;` activates flexbox container.
+* `justify-content` aligns items along the main axis.
+* `align-items` aligns items along the cross axis.
+* `flex-direction` switches between row and column.
+
+#### 2. CSS Grid (2-Dimensional Layout)
+Ideal for layouts with both rows and columns.
+* `display: grid;` activates grid container.
+* `grid-template-columns: repeat(12, 1fr);` creates 12 equal columns.
+* `grid-column: span 8;` lets a child component take 8 columns width.
+
+#### 3. Styling Token Guidelines
+Avoid hardcoding layout styles or using random styling utilities. Always use defined theme design systems (like Tailwind variables or CSS custom properties) to maintain styling consistency across the portal."""
+
+    # Default general chat guide
+    if "hello" in p_lower_actual or "hi" in p_lower_actual or "help" in p_lower_actual:
         return "Hello! I am your AI Learning Mentor. I can explain complex educational topics, help you analyze algorithms like Binary Search, create study notes, or give you advice on your learning roadmap. What topic would you like to study today?"
         
-    return f"""Here is an overview explanation of **"{prompt}"**:
+    return f"""Here is an overview explanation of **"{actual_prompt}"**:
 
 1. **Core Concept**: Understanding this topic is critical for building a complete mental map of your subject area.
 2. **Key Elements**:
@@ -409,7 +608,7 @@ In modern EdTech platforms (SDG 4), resource lookup must be near-instant. Storin
 # 5. Tutor Chatbot API
 @app.post("/chat-tutor")
 async def chat_tutor(req: ChatRequest):
-    if not openai.api_key:
+    if not client:
         return {"response": generate_fallback_chat(req.prompt)}
         
     try:
@@ -420,8 +619,8 @@ async def chat_tutor(req: ChatRequest):
             messages.append({"role": msg["role"], "content": msg["content"]})
         messages.append({"role": "user", "content": req.prompt})
         
-        response = await openai.ChatCompletion.acreate(
-            model="gpt-4-turbo",
+        response = await client.chat.completions.create(
+            model=llm_model,
             messages=messages,
             temperature=0.7
         )

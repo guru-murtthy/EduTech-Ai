@@ -1,4 +1,10 @@
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
+let API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
+
+if (typeof window !== 'undefined') {
+  // On the client side, use the Next.js rewrite proxy (/api) to avoid CORS and firewall restrictions,
+  // unless process.env.NEXT_PUBLIC_API_URL is explicitly configured.
+  API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || '/api';
+}
 
 export async function apiRequest(endpoint: string, options: RequestInit = {}) {
   const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
@@ -71,4 +77,10 @@ export const chat = {
 
 export const admin = {
   getAnalytics: () => apiRequest('/analytics/admin'),
+};
+
+export const support = {
+  getHistory: (withEmail?: string) => apiRequest(`/support/history${withEmail ? `?with=${encodeURIComponent(withEmail)}` : ''}`),
+  sendMessage: (data: { receiverEmail?: string; message: string }) => apiRequest('/support/send', { method: 'POST', body: JSON.stringify(data) }),
+  getContacts: () => apiRequest('/support/contacts'),
 };
