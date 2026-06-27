@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "EduTech AI - Personal AI Learning Mentor",
-  description: "An AI-powered personalized education platform supporting SDG 4, with adaptive study roadmaps, AI tutoring, and grade predictions.",
+  title: "Parichay Tours and Travels",
+  description: "Your premier travel agency in India, offering customized holiday tour packages, domestic and international trips, hotel bookings, and reliable transport services.",
 };
 
 export default function RootLayout({
